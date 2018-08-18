@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>getData() Basic Example</title>
+        <script src="annyang.min.js"></script> <!-- Voice Recognition -->
+        <script src="responsivevoice.js"></script> <!-- Voice Response -->
+		<script type="text/javascript" src="https://public.tableau.com/javascripts/api/tableau-2.min.js"></script>
+        <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+        <script type="text/javascript">
+            var viz, sheet, table, text,niceData;
+
+            function initViz() {
+		var containerDiv = document.getElementById("vizContainer"),
+                    url = "https://fe-qt7.de.bosch.com/#/site/Tableau-admin/views/SMToverview/SMTOverview",
+                    options = {
+                        "Filter Month": "",
+                        hideTabs: true,
+                        hideToolbar: true,
+                        onFirstInteractive: function () {
+                            document.getElementById('getData').disabled = false; // Enable our button
+                        }
+                    };
+                viz = new tableau.Viz(containerDiv, url, options);
+//                responsiveVoice.speak('Hi. This is Alexa. How may I help you?');
+            }
+
+            function getUnderlyingData(){
+                sheet = viz.getWorkbook().getActiveSheet().getWorksheets().get("Total Number of Tickets");
+// If the active sheet is not a dashboard, then you can just enter:
+// viz.getWorkbook().getActiveSheet();
+                options = {
+                    maxRows: 10, // Max rows to return. Use 0 to return all rows
+                    ignoreAliases: false,
+                    ignoreSelection: true,
+                    includeAllColumns: false
+                };
+
+/*                sheet.getSummaryDataAsync(options).then(function(t){
+                      table = t;
+			var tgt = document.getElementById("dataTarget");
+			tgt.innerHTML = "<h4>Underlying Data:</h4><p>" + JSON.stringify(table.getData()) + "</p>";
+                });
+*/
+
+            sheet.getSummaryDataAsync(options).then(function(t){
+               buildMenu(t);
+                 });
+            }
+            
+            function yearFilter(year) {
+            var sheet = viz.getWorkbook().getActiveSheet().getWorksheets().get("Total Number of Tickets");
+            if (year === "") {
+                viz.revertAllAsync()
+            } else {
+                sheet.applyFilterAsync("Filter Month", year, tableau.FilterUpdateType.REPLACE);
+            }
+            }
+  //restructure the data and build something with it
+function buildMenu(table) {
+    
+    //the data returned from the tableau API
+    var columns = table.getColumns();
+    var data = table.getData();
+    
+    //convert to field:values convention
+    function reduceToObjects(cols,data) {
+        var fieldNameMap = $.map(cols, function(col) { return col.getFieldName(); });
+        var dataToReturn = $.map(data, function(d) {
+                                        return d.reduce(function(memo, value, idx) {
+                                            memo[fieldNameMap[idx]] = value.value; return memo;
+                                        }, {});
+                                    });
+        return dataToReturn;
+    }
+    
+    var niceData = reduceToObjects(columns, data);
+    alert(JSON.stringify(niceData[0]));
+
+}
+
+        </script>
+
+//        <script>
+/*            if (annyang) {
+                annyang.addCallback('result', function(phrases) {
+                    console.log('Speech recognized. Possible sentences said:');
+                    console.log(phrases);
+                });
+             // These are the voice commands in quotes followed by the function
+             var commands = {
+                'Select April': function() { yearFilter("April 2018");getUnderlyingData(); responsiveVoice.speak(text, "UK English Male"); },
+                'Select May': function() {  yearFilter("May 2018"); responsiveVoice.speak(commands); },
+                '(Select) (June) (Juun) (Ju)': function() {  yearFilter("June 2018"); responsiveVoice.speak('selecting June', "UK English Female"); },
+                'Select July': function() {  yearFilter("July 2018"); responsiveVoice.speak('selecting July'); },
+                'Select August': function() { yearFilter("August 2018"); responsiveVoice.speak('selecting August'); },
+                'start over': function() {  yearFilter(""); responsiveVoice.speak('starting over'); }
+ //                };
+  
+// Add commands to annyang
+            annyang.addCommands(commands);
+
+// Start listening.
+            annyang.start();
+}
+*/        </script>
+    </head>
+
+    <body onload="initViz();">
+        <div class="page-header">
+            <h1>getData() Basic Example</h1>
+            <p>Click the "Get Data" button to get underlying data for the viz.</p>
+            <button id="getData" onclick="getUnderlyingData()" class="btn" disabled>Get Data</button>
+        </div>
+        <div id="controls" style="padding:20px;">
+        Year: <select id="changeYear" onchange="yearFilter(value);">
+            <option value="">All</option>
+            <option value="April 2018">April</option>
+            <option value="May 2018">May</option>
+            <option value="June 2018">June</option>
+            <option value="July 2018">July</option>
+            <option value="August 2018">August</option>
+        </select>
+        </div>
+        <div id="vizContainer" style="width:1000px; height:1000px;"></div>
+        <div id="dataTarget"></div>
+    </body>
+</html>
